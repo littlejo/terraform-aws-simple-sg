@@ -2,43 +2,29 @@ resource "aws_security_group" "this" {
   name        = var.name
   description = var.description
   vpc_id      = var.vpc_id
-}
-
-resource "aws_security_group_rule" "cidr" {
-  count             = length(var.cidr_blocks) == 0 ? 0 : 1
-  type              = "ingress"
-  from_port         = var.port
-  to_port           = var.port
-  protocol          = "tcp"
-  cidr_blocks       = var.cidr_blocks
-  security_group_id = aws_security_group.this.id
-}
-
-resource "aws_security_group_rule" "sg" {
-  for_each                 = toset(var.sg_ids)
-  type                     = "ingress"
-  from_port                = var.port
-  to_port                  = var.port
-  protocol                 = "tcp"
-  source_security_group_id = each.key
-  security_group_id        = aws_security_group.this.id
-}
-
-resource "aws_security_group_rule" "sg_ports" {
-  for_each                 = var.sg_ids_ports
-  type                     = "ingress"
-  from_port                = each.value
-  to_port                  = each.value
-  protocol                 = "tcp"
-  source_security_group_id = each.key
-  security_group_id        = aws_security_group.this.id
-}
-
-resource "aws_security_group_rule" "egress" {
-  type              = "egress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = -1
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.this.id
+  tags        = var.tags
+  dynamic ingress {
+    for_each = var.port_sg
+    content {
+      from_port   = ingress.key
+      to_port     = ingress.key
+      security_groups = ingress.value
+      protocol    = "tcp"
+    }
+  }
+  dynamic ingress {
+    for_each = var.port_cidr
+    content {
+      from_port   = ingress.key
+      to_port     = ingress.key
+      cidr_blocks = ingress.value
+      protocol    = "tcp"
+    }
+  }
+  egress {
+      from_port   = 0
+      to_port     = 0
+      cidr_blocks = ["0.0.0.0/0"]
+      protocol    = "tcp"
+  }
 }
